@@ -92,6 +92,7 @@ server = function(input, output) {
 			~ category, ~ name, ~ prod_index, ~ parent_category, ~ color,
 			'econ', 'Economics & Data Science', 1, NA, '#7CB5EC',
 			'dev', 'Development & Programming', 1, NA, '#8085E9',
+			'prod', 'Personal Productivity', 1, NA, '#F15C80',
 			'util', 'Misc Utilities', 0, NA, '#90ED7D',
 			'unknown', 'Uncategorized', 0, NA, '#000000',
 			'ent', 'Entertainment', -1, NA, '#F7A35C'
@@ -126,14 +127,19 @@ server = function(input, output) {
 			'datacamp.com', 'econ',
 			'api.highcharts.com', 'econ',
 			'jkunst.com', 'dev',
-			'lubridate.tidyverse.org', 'econ'
+			'lubridate.tidyverse.org', 'econ',
+			'localhost:1993', 'prod',
+			'rdrr.io', 'econ',
+			'datascienceplus.com', 'econ',
+			'notepad.exe', 'dev',
+			'cmd.exe', 'dev'
 		)
 	
 	
 	getRawDf = reactive({
 		conn = dbConnect(RSQLite::SQLite(), SQLITE_DIR)
 		rawDf =
-			dbGetQuery(conn, 'SELECT * FROM eventmodel') %>%
+			dbGetQuery(conn, 'SELECT * FROM eventmodel WHERE duration >= 0') %>%
 			as_tibble(.)
 		return(rawDf)
 	})
@@ -187,7 +193,7 @@ server = function(input, output) {
 			dplyr::mutate(., task = ifelse(is.na(url), app, url)) %>%
 			dplyr::group_by(., task) %>%
 			dplyr::summarize(., minutes = round(sum(duration)/60)) %>%
-			dplyr::mutate(., hours = round(minutes/60, 1)) %>%
+			dplyr::mutate(., hours = round(minutes/60, 2)) %>%
 			dplyr::left_join(taskDf, by = 'task') %>%
 			dplyr::mutate(., category = ifelse(is.na(category), 'unknown', category)) %>%
 			dplyr::arrange(., desc(minutes))
@@ -204,7 +210,7 @@ server = function(input, output) {
 			taskTimeDf %>%
 			dplyr::group_by(., category) %>%
 			dplyr::summarize(., minutes = sum(minutes)) %>% 
-			dplyr::mutate(., hours = round(minutes/60, 1)) %>%
+			dplyr::mutate(., hours = round(minutes/60, 2)) %>%
 			dplyr::left_join(., catDf, by = 'category')
 			
 		return(catTimeDf)
@@ -213,12 +219,16 @@ server = function(input, output) {
 	
 	output$catPlot =
 		renderHighchart({
-			catTimeDf = getCatTimeDf()
+			chartDf =
+				getCatTimeDf() %>%
+				dplyr::mutate(., time = {if (max(.$minutes) >= 120) hours else minutes})
+			
+			textStr = {if (max(chartDf$minutes) >= 120) 'Duration (Hours)' else 'Duration (Minutes)'}
 			
 			highchart() %>%
-				hc_add_series(., type = 'bar', data = catTimeDf, mapping = hcaes(x = name, y = hours, color = color)) %>%
-				hc_xAxis(categories = catTimeDf$name) %>%
-				hc_yAxis(title = list(text = 'Duration (Hours)')) %>%
+				hc_add_series(., type = 'bar', data = chartDf, mapping = hcaes(x = name, y = time, color = color)) %>%
+				hc_xAxis(categories = chartDf$name) %>%
+				hc_yAxis(title = list(text = textStr)) %>%
 				hc_size(height = 300) %>%
 				hc_legend(enabled = FALSE) %>%
 				hc_title(text = 'Categories') %>%
@@ -266,15 +276,19 @@ server = function(input, output) {
 
 	output$taskPlot =
 		renderHighchart2({
+			
 			chartDf =
 				getTaskTimeDf() %>%
 				head(., 20) %>%
-				dplyr::left_join(., catDf, by = 'category')
+				dplyr::left_join(., catDf, by = 'category') %>%
+				dplyr::mutate(., time = {if (max(.$minutes) >= 120) hours else minutes})
 
+			textStr = {if (max(chartDf$minutes) >= 120) 'Duration (Hours)' else 'Duration (Minutes)'}
+			
 			highchart() %>%
-				hc_add_series(., type = 'column', data = chartDf, mapping = hcaes(x = task, y = hours, color = color)) %>%
+				hc_add_series(., type = 'column', data = chartDf, mapping = hcaes(x = task, y = time, color = color)) %>%
 				hc_xAxis(categories = chartDf$task) %>%
-				hc_yAxis(title = list(text = 'Duration (Hours)')) %>%
+				hc_yAxis(title = list(text = textStr)) %>%
 				hc_legend(enabled = FALSE) %>%
 				hc_title(text = 'Tasks') %>%
 				hc_add_theme(hc_theme_ft())
