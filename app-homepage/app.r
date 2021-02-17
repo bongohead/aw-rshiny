@@ -187,6 +187,7 @@ server = function(input, output) {
 			dplyr::mutate(., task = ifelse(is.na(url), app, url)) %>%
 			dplyr::group_by(., task) %>%
 			dplyr::summarize(., minutes = round(sum(duration)/60)) %>%
+			dplyr::mutate(., hours = round(minutes/60, 1)) %>%
 			dplyr::left_join(taskDf, by = 'task') %>%
 			dplyr::mutate(., category = ifelse(is.na(category), 'unknown', category)) %>%
 			dplyr::arrange(., desc(minutes))
@@ -202,7 +203,8 @@ server = function(input, output) {
 		catTimeDf =
 			taskTimeDf %>%
 			dplyr::group_by(., category) %>%
-			dplyr::summarize(., minutes = sum(minutes)) %>%
+			dplyr::summarize(., minutes = sum(minutes)) %>% 
+			dplyr::mutate(., hours = round(minutes/60, 1)) %>%
 			dplyr::left_join(., catDf, by = 'category')
 			
 		return(catTimeDf)
@@ -214,12 +216,13 @@ server = function(input, output) {
 			catTimeDf = getCatTimeDf()
 			
 			highchart() %>%
-				hc_add_series(., type = 'bar', data = catTimeDf, mapping = hcaes(x = name, y = minutes, color = color)) %>%
+				hc_add_series(., type = 'bar', data = catTimeDf, mapping = hcaes(x = name, y = hours, color = color)) %>%
 				hc_xAxis(categories = catTimeDf$name) %>%
-				hc_yAxis(title = list(text = 'Duration (Minutes)')) %>%
+				hc_yAxis(title = list(text = 'Duration (Hours)')) %>%
 				hc_size(height = 300) %>%
 				hc_legend(enabled = FALSE) %>%
-				hc_add_theme(hc_theme_bloom())
+				hc_title(text = 'Categories') %>%
+				hc_add_theme(hc_theme_ft())
 				
 			# catTimeDf %>%
 			# 	purrr::transpose(.) %>%
@@ -269,11 +272,12 @@ server = function(input, output) {
 				dplyr::left_join(., catDf, by = 'category')
 
 			highchart() %>%
-				hc_add_series(., type = 'column', data = chartDf, mapping = hcaes(x = task, y = minutes, color = color)) %>%
+				hc_add_series(., type = 'column', data = chartDf, mapping = hcaes(x = task, y = hours, color = color)) %>%
 				hc_xAxis(categories = chartDf$task) %>%
-				hc_yAxis(title = list(text = 'Duration (Minutes)')) %>%
+				hc_yAxis(title = list(text = 'Duration (Hours)')) %>%
 				hc_legend(enabled = FALSE) %>%
-				hc_add_theme(hc_theme_bloom())
+				hc_title(text = 'Tasks') %>%
+				hc_add_theme(hc_theme_ft())
 			})
 
 	output$taskTable =
@@ -281,7 +285,7 @@ server = function(input, output) {
 			datatable(
 				getTaskTimeDf() %>%
 					dplyr::select(., task, category, minutes),
-				colnames = c('Task' = 'task', 'Category' = 'category', 'Duration' = 'minutes'),
+				colnames = c('Task' = 'task', 'Category' = 'category', 'Duration (Minutes)' = 'minutes'),
 				options = list(
 					dom = paste0(
 						"<'row justify-content-end'<'col-auto'>>",
