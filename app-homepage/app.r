@@ -6,7 +6,6 @@ library(shiny)
 library(highcharter)
 library(DT)
 library(lubridate)
-library(urltools)
 
  
 getDomains = function(vec) {
@@ -136,7 +135,7 @@ server = function(input, output) {
 			'datacamp.com', 'econ',
 			'api.highcharts.com', 'econ',
 			'jkunst.com', 'dev',
-			'lubridate.tidyverse.org', 
+			'lubridate.tidyverse.org', 'econ'
 		)
 	
 	
