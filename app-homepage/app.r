@@ -34,55 +34,54 @@ ui = tagList(
 		
 	),
 	
-	tags$body(
 	
+	div(
+		class = 'container-fluid',
+		
 		div(
-			class = 'container-fluid',
-			
+			class = 'container',
+			h3('AW GUI')
+			),
+		
+		div(
+			class = 'container',
+			selectInput(
+				'freq',
+				h3("Select box"), 
+				choices = list('Hour' = 'h', 'Day' = 'd', "Week" = 'w', 'Month' = 'm'), selected = 'd')
+			),
+		
+		div(
+			class = 'container',
 			div(
-				class = 'container',
-				h3('AW GUI - (C) CHARLES YE')
-				),
-			
+				class = 'row',
+				div(class = 'col-md-12 col-lg-6', highchartOutput('catPlot', height = 300)),
+				div(class = 'col-md-12 col-lg-6', dataTableOutput('catTable')),
+				)
+			),
+		
+		div(
+			class = 'container',
 			div(
-				class = 'container',
-				selectInput(
-					'freq',
-					h3("Select box"), 
-					choices = list('Hour' = 'h', 'Day' = 'd', "Week" = 'w', 'Month' = 'm'), selected = 'd')
-				),
-			
+				class = 'row justify-content-center',
+				highchartOutput(outputId = "taskPlot"),
+				div(class = 'col-auto', dataTableOutput('taskTable'))
+				)
+			),
+		
+		hr(),
+		div(
+			id = 'settings-container',
+			class = 'container',
+			h3('Settings'),
 			div(
-				class = 'container',
-				div(
-					class = 'row',
-					div(class = 'col-md-12 col-lg-6', highchartOutput('catPlot', height = 200)),
-					div(class = 'col-md-12 col-lg-6', dataTableOutput('catTable')),
-					)
-				),
-			
-			div(
-				class = 'container',
-				div(
-					class = 'row justify-content-center',
-					highchartOutput(outputId = "taskPlot"),
-					div(class = 'col-auto', dataTableOutput('taskTable'))
-					)
-				),
-			
-			hr(),
-			div(
-				id = 'settings-container',
-				class = 'container',
-				h3('Settings'),
-				div(
-					class = 'row justify-content-center',
-					div(class = 'col-auto mx-3', dataTableOutput('catParams')),
-					div(class = 'col-auto mx-3', dataTableOutput('taskParams')),
-					)
+				class = 'row justify-content-center',
+				div(class = 'col-auto mx-3', dataTableOutput('catParams')),
+				div(class = 'col-auto mx-3', dataTableOutput('taskParams')),
 				)
 			)
 		)
+	
 )
 
 
@@ -97,14 +96,6 @@ server = function(input, output) {
 			'unknown', 'Uncategorized', 0, NA, '#000000',
 			'ent', 'Entertainment', -1, NA, '#F7A35C'
 		) %>%
-		# tribble(
-		# 	~ category, ~ name, ~ prod_index, ~ parent_category, ~ color,
-		# 	'econ', 'Economics & Data Science', 1, NA, '#7CB5EC',
-		# 	'dev', 'Development & Programming', 1, NA, '#434348',
-		# 	'util', 'Misc Utilities', 0, NA, '#90ED7D',
-		# 	'unknown', 'Uncategorized', 0, NA, '#FF0000',
-		# 	'ent', 'Entertainment', -1, NA, '#F7A35C'
-		# ) %>%
 		rowwise(.) %>%
 		dplyr::mutate(
 			.,
@@ -219,7 +210,7 @@ server = function(input, output) {
 	
 	
 	output$catPlot =
-		renderHighchart2({
+		renderHighchart({
 			catTimeDf = getCatTimeDf()
 			
 			highchart() %>%
@@ -227,7 +218,8 @@ server = function(input, output) {
 				hc_xAxis(categories = catTimeDf$name) %>%
 				hc_yAxis(title = list(text = 'Duration (Minutes)')) %>%
 				hc_size(height = 300) %>%
-				hc_legend(enabled = FALSE)
+				hc_legend(enabled = FALSE) %>%
+				hc_add_theme(hc_theme_bloom())
 				
 			# catTimeDf %>%
 			# 	purrr::transpose(.) %>%
@@ -280,7 +272,8 @@ server = function(input, output) {
 				hc_add_series(., type = 'column', data = chartDf, mapping = hcaes(x = task, y = minutes, color = color)) %>%
 				hc_xAxis(categories = chartDf$task) %>%
 				hc_yAxis(title = list(text = 'Duration (Minutes)')) %>%
-				hc_legend(enabled = FALSE)
+				hc_legend(enabled = FALSE) %>%
+				hc_add_theme(hc_theme_bloom())
 			})
 
 	output$taskTable =
