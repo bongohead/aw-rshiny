@@ -41,7 +41,7 @@ ui = tagList(
 
 server = function(input, output) {
 	
-	getDataDf = reactive({
+	getRawDf = reactive({
 		readxl::read_xlsx(XLSX_DIR) %>%
 			dplyr::rename_with(., function(x) str_replace(x, ' ', '')) %>%
 			dplyr::mutate(., across(contains('Date'), function(x) as.Date(x, origin = '1899-12-30'))) %>%
@@ -53,15 +53,31 @@ server = function(input, output) {
 		renderHighchart({
 			
 			dataDf =
-				getDataDf() %>%
+				getRawDf() %>%
 				dplyr::mutate(
 					.,
 					Source = paste0('sc', Source),
 					Portal = paste0('pr', Portal),
 					InitialReply = ifelse(is.na(InitialReply), 'N', InitialReply),
 					InitialReply = paste0('ir', InitialReply),
-					Interview = ifelse(is.na(Interview), 'N', Interview),
+					Interview =
+						ifelse(is.na(InitialReply) & is.na(Interview), 'N',
+							   ifelse(is.na(Interview) & InitialReply != 'irA', str_sub(InitialReply, 3),
+							   	   ifelse(is.na(Interview) & InitialReply == 'irA', 'N',
+							   	   	   Interview
+							   	   	   )
+							   	   )
+							   ),
 					Interview = paste0('i1', Interview),
+					Interview2 =
+						ifelse(is.na(Interview) & is.na(Interview2), 'N',
+							   ifelse(is.na(Interview2) & Interview != 'i1A', str_sub(Interview, 3),
+							   	   ifelse(is.na(Interview2) & Interview == 'i1A', 'N',
+							   	   	   Interview2
+							   	   )
+							   )
+						),
+					Interview2 = paste0('i2', Interview2),
 				)
 			
 			# Max 4 columns
@@ -113,37 +129,67 @@ server = function(input, output) {
 						id = 'irA',
 						column = 2,
 						name = 'Passed Initial Screen',
-						color = 'green'
+						color = 'lightgreen'
 					),
 					list(
 						id = 'irD',
 						column = 2,
-						name = 'Denied',
+						name = 'Rejection',
 						color = 'red'
 					),
 					list(
 						id = 'irN',
 						column = 2,
-						name = 'TBD',
+						name = 'Awaiting/No Response',
 						color = 'black'
 					),
 					list(
 						id = 'i1N',
 						column = 3,
-						name = 'TBD',
+						name = 'Awaiting/No Response',
 						color = 'black'
 					),
 					list(
 						id = 'i1A',
 						column = 3,
-						name = 'Interview',
-						color = 'green'
+						name = 'First Interview',
+						color = 'MediumSpringGreen'
 					),
 					list(
 						id = 'i1D',
 						column = 3,
-						name = 'Denied',
+						name = 'Rejection',
 						color = 'red'
+					),
+					list(
+						id = 'i1W',
+						column = 3,
+						name = 'Withdrawn By Me',
+						color = 'purple'
+					),
+					list(
+						id = 'i2N',
+						column = 4,
+						name = 'Awaiting/No Response',
+						color = 'black'
+					),
+					list(
+						id = 'i2A',
+						column = 4,
+						name = 'Second Interview',
+						color = 'forestgreen'
+					),
+					list(
+						id = 'i2D',
+						column = 4,
+						name = 'Rejection',
+						color = 'red'
+					),
+					list(
+						id = 'i2W',
+						column = 4,
+						name = 'Withdrawn By Me',
+						color = 'purple'
 					)
 				)
 			
@@ -171,6 +217,15 @@ server = function(input, output) {
 				dplyr::group_by(., InitialReply, Interview) %>%
 				dplyr::summarize(., n = n(), .groups = 'drop') %>%
 				dplyr::rename(., from = InitialReply, to = Interview, weight = n)
+			
+			chartDfs[[4]] =
+				dataDf %>%
+				# dplyr::filter(., InitialReply == 'irA') %>%
+				dplyr::mutate(., Interview2 = ifelse(Interview != 'i1A', paste0('i2', str_sub(Interview, 3)), Interview2)) %>%
+				dplyr::select(., Interview, Interview2) %>%
+				dplyr::group_by(., Interview, Interview2) %>%
+				dplyr::summarize(., n = n(), .groups = 'drop') %>%
+				dplyr::rename(., from = Interview, to = Interview2, weight = n)
 			
 			chartDf = chartDfs %>% dplyr::bind_rows(.)
 

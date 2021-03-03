@@ -280,7 +280,7 @@ server = function(input, output, session) {
 			dplyr::left_join(., taskDf %>% dplyr::mutate(., task = str_replace(task, coll('*.'), '')), by = 'task') %>%
 			dplyr::mutate(., category = ifelse(is.na(category), 'unknown', category)) %>%
 			dplyr::arrange(., desc(minutes)) %>%
-			dplyr::filter(., !task %in% c('newtab'))
+			dplyr::filter(., !task %in% c('newtab', 'LockApp.exe'))
 		
 		return(taskTimeDf)
 	})
