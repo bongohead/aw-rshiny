@@ -123,13 +123,13 @@ server = function(input, output, session) {
 		{c(., .$x)}
 	
 	
-	
-	
 	getRawDf = reactive({
 		conn = dbConnect(RSQLite::SQLite(), SQLITE_DIR)
 		rawDf =
-			dbGetQuery(conn, 'SELECT * FROM eventmodel WHERE duration >= 1') %>%
-			as_tibble(.)
+			dbGetQuery(conn, 'SELECT * FROM eventmodel WHERE duration >= 1 ORDER BY timestamp ASC') %>%
+			as_tibble(.) %>%
+			dplyr::mutate(., afk = ifelse(bucket_id == 2, ifelse(datastr == '{\"status\": \"afk\"}', TRUE, FALSE), NA)) %>%
+			tidyr::fill(., afk) 
 		return(rawDf)
 	})
 	
@@ -246,7 +246,7 @@ server = function(input, output, session) {
 		
 		taskTimeDf =
 			filteredDf %>%
-			dplyr::filter(., bucket_id != 2 & duration != 0) %>%
+			dplyr::filter(., (bucket_id == 2 & afk == TRUE) | bucket_id != 2 & duration != 0) %>%
 			rowwise(.) %>%
 			dplyr::mutate(., datastr = map(datastr, function(x) as_tibble(jsonlite::fromJSON(x)))) %>%
 			tidyr::unnest(., datastr) %>%
@@ -255,8 +255,9 @@ server = function(input, output, session) {
 				timestamp,
 				duration,
 				app,
-				title,
-				url = getDomains(url)
+				title = ifelse(is.na(title) & afk == TRUE, 'went-afk', title),
+				url = getDomains(url),
+				afk
 			) %>%
 			# Replace entries that are x.domain.com with domain.com if in topLevelDomains
 			dplyr::mutate(
@@ -265,12 +266,14 @@ server = function(input, output, session) {
 				url = ifelse(url2 %in% topLevelDomains, url2, url)
 			) %>%
 			dplyr::select(., -url2) %>%
-			# Get rid of firefox due to overlapping with url entries
-			dplyr::filter(., is.na(app) | app != 'firefox.exe') %>%
+			# Get rid of firefox due to overlapping with url entries and AFK entries
+			dplyr::filter(., (is.na(app) | app != 'firefox.exe')) %>%
 			# Now shortern the duration of any entries where the time overlaps with the second entry (this seems to be an AW bug)
 			dplyr::arrange(., timestamp) %>%
 			dplyr::mutate(., timeEnded = timestamp + lubridate::seconds(duration)) %>%
 			dplyr::mutate(., duration = ifelse(timeEnded > dplyr::lead(timestamp, 1) & !is.na(dplyr::lead(timestamp, 1)), dplyr::lead(timestamp, 1) - timestamp, duration)) %>%
+			# This gets rid of remaining afk entries (some will be marked after afk has already started, these are not removed in the previous step)
+			dplyr::filter(., afk == FALSE) %>%
 			# Order desc
 			dplyr::arrange(., desc(timestamp)) %>%
 			dplyr::mutate(., task = ifelse(is.na(url), app, url)) %>%
@@ -279,8 +282,7 @@ server = function(input, output, session) {
 			dplyr::mutate(., hours = round(minutes/60, 2)) %>%
 			dplyr::left_join(., taskDf %>% dplyr::mutate(., task = str_replace(task, coll('*.'), '')), by = 'task') %>%
 			dplyr::mutate(., category = ifelse(is.na(category), 'unknown', category)) %>%
-			dplyr::arrange(., desc(minutes)) %>%
-			dplyr::filter(., !task %in% c('newtab', 'LockApp.exe'))
+			dplyr::arrange(., desc(minutes))
 		
 		return(taskTimeDf)
 	})

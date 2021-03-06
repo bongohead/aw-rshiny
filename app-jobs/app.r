@@ -90,6 +90,13 @@ server = function(input, output) {
 						color = 'Teal'
 					),
 					list(
+						id = 'scGoogle',
+						column = 0,
+						name = 'Found Through Google',
+						color = 'Blue'
+					),
+					
+					list(
 						id = 'scIndeed',
 						column = 0,
 						name = 'Found Through Indeed',
@@ -123,7 +130,7 @@ server = function(input, output) {
 						id = 'prNo Formal Application',
 						column = 1,
 						name = 'No Formal Application',
-						color = 'Brown'
+						color = 'Pink'
 					),
 					list(
 						id = 'irA',
@@ -168,6 +175,13 @@ server = function(input, output) {
 						color = 'purple'
 					),
 					list(
+						id = 'i1G',
+						column = 3,
+						name = 'Ghosted',
+						color = 'Maroon'
+					),
+					
+					list(
 						id = 'i2N',
 						column = 4,
 						name = 'Awaiting/No Response',
@@ -190,6 +204,12 @@ server = function(input, output) {
 						column = 4,
 						name = 'Withdrawn By Me',
 						color = 'purple'
+					),
+					list(
+						id = 'i2G',
+						column = 4,
+						name = 'Ghosted',
+						color = 'Maroon'
 					)
 				)
 			
