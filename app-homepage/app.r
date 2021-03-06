@@ -282,7 +282,8 @@ server = function(input, output, session) {
 			dplyr::mutate(., hours = round(minutes/60, 2)) %>%
 			dplyr::left_join(., taskDf %>% dplyr::mutate(., task = str_replace(task, coll('*.'), '')), by = 'task') %>%
 			dplyr::mutate(., category = ifelse(is.na(category), 'unknown', category)) %>%
-			dplyr::arrange(., desc(minutes))
+			dplyr::arrange(., desc(minutes)) %>%
+			dplyr::filter(., task != 'LockApp.exe')
 		
 		return(taskTimeDf)
 	})
