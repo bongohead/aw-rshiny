@@ -128,7 +128,7 @@ server = function(input, output, session) {
 		rawDf =
 			dbGetQuery(conn, 'SELECT * FROM eventmodel WHERE duration >= 1 ORDER BY timestamp ASC') %>%
 			as_tibble(.) %>%
-			dplyr::mutate(., afk = ifelse(bucket_id == 2, ifelse(datastr == '{\"status\": \"afk\"}', TRUE, FALSE), NA)) %>%
+			dplyr::mutate(., afk = ifelse(bucket_id == 1, ifelse(datastr == '{\"status\": \"afk\"}', TRUE, FALSE), NA)) %>%
 			tidyr::fill(., afk) 
 		return(rawDf)
 	})
@@ -246,7 +246,7 @@ server = function(input, output, session) {
 		
 		taskTimeDf =
 			filteredDf %>%
-			dplyr::filter(., (bucket_id == 2 & afk == TRUE) | bucket_id != 2 & duration != 0) %>%
+			dplyr::filter(., (bucket_id == 1 & afk == TRUE) | bucket_id != 1 & duration != 0) %>%
 			rowwise(.) %>%
 			dplyr::mutate(., datastr = map(datastr, function(x) as_tibble(jsonlite::fromJSON(x)))) %>%
 			tidyr::unnest(., datastr) %>%
