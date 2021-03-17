@@ -78,6 +78,24 @@ server = function(input, output) {
 							   )
 						),
 					Interview2 = paste0('i2', Interview2),
+					Interview3 = 
+						ifelse(is.na(Interview2) & is.na(Interview3), 'N',
+							   ifelse(is.na(Interview3) & Interview2 != 'i2A', str_sub(Interview2, 3),
+							   	   ifelse(is.na(Interview3) & Interview2 == 'i2A', 'N',
+							   	   	   Interview3
+							   	   )
+							   )
+						),
+					Interview3 = paste0('i3', Interview3),
+					Interview4 = 
+						ifelse(is.na(Interview3) & is.na(Interview4), 'N',
+							   ifelse(is.na(Interview4) & Interview3 != 'i3A', str_sub(Interview3, 3),
+							   	   ifelse(is.na(Interview4) & Interview3 == 'i3A', 'N',
+							   	   	   Interview4
+							   	   )
+							   )
+						),
+					Interview4 = paste0('i4', Interview4)
 				)
 			
 			# Max 4 columns
@@ -134,9 +152,9 @@ server = function(input, output) {
 						color = 'lightblue'
 					),
 					list(
-						id = 'prNo Formal Application',
+						id = 'prOther',
 						column = 1,
-						name = 'No Formal Application',
+						name = 'Applied Through Other Platform',
 						color = 'Pink'
 					),
 					list(
@@ -158,6 +176,12 @@ server = function(input, output) {
 						color = 'black'
 					),
 					list(
+						id = 'irW',
+						column = 2,
+						name = 'Withdrawn By Me',
+						color = 'purple'
+					),
+					list(
 						id = 'i1N',
 						column = 3,
 						name = 'No Response',
@@ -166,7 +190,7 @@ server = function(input, output) {
 					list(
 						id = 'i1A',
 						column = 3,
-						name = 'First Interview',
+						name = 'First Round',
 						color = 'MediumSpringGreen'
 					),
 					list(
@@ -197,7 +221,7 @@ server = function(input, output) {
 					list(
 						id = 'i2A',
 						column = 4,
-						name = 'Second Interview',
+						name = 'Second Round',
 						color = 'forestgreen'
 					),
 					list(
@@ -217,7 +241,68 @@ server = function(input, output) {
 						column = 4,
 						name = 'Ghost',
 						color = 'Maroon'
+					),
+					list(
+						id = 'i3N',
+						column = 5,
+						name = 'Awaiting/No Response',
+						color = 'black'
+					),
+					list(
+						id = 'i3A',
+						column = 5,
+						name = 'Third Round',
+						color = 'forestgreen'
+					),
+					list(
+						id = 'i3D',
+						column = 5,
+						name = 'Rejection',
+						color = 'red'
+					),
+					list(
+						id = 'i3W',
+						column = 5,
+						name = 'Withdrawn By Me',
+						color = 'purple'
+					),
+					list(
+						id = 'i3G',
+						column = 5,
+						name = 'Ghost',
+						color = 'Maroon'
+					),
+					list(
+						id = 'i4N',
+						column = 6,
+						name = 'Awaiting/No Response',
+						color = 'black'
+					),
+					list(
+						id = 'i4A',
+						column = 6,
+						name = 'Third Round',
+						color = 'forestgreen'
+					),
+					list(
+						id = 'i4D',
+						column = 6,
+						name = 'Rejection',
+						color = 'red'
+					),
+					list(
+						id = 'i4W',
+						column = 6,
+						name = 'Withdrawn By Me',
+						color = 'purple'
+					),
+					list(
+						id = 'i4G',
+						column = 6,
+						name = 'Ghost',
+						color = 'Maroon'
 					)
+					
 				)
 			
 			chartDfs = list()
@@ -253,6 +338,22 @@ server = function(input, output) {
 				dplyr::group_by(., Interview, Interview2) %>%
 				dplyr::summarize(., n = n(), .groups = 'drop') %>%
 				dplyr::rename(., from = Interview, to = Interview2, weight = n)
+			
+			chartDfs[[5]] =
+				dataDf %>%
+				dplyr::mutate(., Interview3 = ifelse(Interview2 != 'i2A', paste0('i3', str_sub(Interview2, 3)), Interview3)) %>%
+				dplyr::select(., Interview2, Interview3) %>%
+				dplyr::group_by(., Interview2, Interview3) %>%
+				dplyr::summarize(., n = n(), .groups = 'drop') %>%
+				dplyr::rename(., from = Interview2, to = Interview3, weight = n)
+			
+			chartDfs[[6]] =
+				dataDf %>%
+				dplyr::mutate(., Interview4 = ifelse(Interview3 != 'i3A', paste0('i4', str_sub(Interview3, 3)), Interview4)) %>%
+				dplyr::select(., Interview3, Interview4) %>%
+				dplyr::group_by(., Interview3, Interview4) %>%
+				dplyr::summarize(., n = n(), .groups = 'drop') %>%
+				dplyr::rename(., from = Interview3, to = Interview4, weight = n)
 			
 			chartDf = chartDfs %>% dplyr::bind_rows(.)
 
