@@ -95,7 +95,18 @@ server = function(input, output) {
 							   	   )
 							   )
 						),
-					Interview4 = paste0('i4', Interview4)
+					Interview4 = paste0('i4', Interview4),
+					Interview5 = 
+						ifelse(is.na(Interview4) & is.na(Interview5), 'N',
+							   ifelse(is.na(Interview5) & Interview4 != 'i4A', str_sub(Interview4, 3),
+							   	   ifelse(is.na(Interview5) & Interview4 == 'i4A', 'N',
+							   	   	   Interview5
+							   	   )
+							   )
+						),
+					Interview5 = paste0('i5', Interview5)
+					
+					
 				)
 			
 			# Max 4 columns
@@ -104,33 +115,33 @@ server = function(input, output) {
 					list(
 						id = 'scGlassdoor',
 						column = 0,
-						name = 'Found Through Glassdoor/LinkedIn',
+						name = 'Found Posting Through Glassdoor',
 						color = 'Teal'
 					),
 					list(
 						id = 'scOther',
 						column = 0,
-						name = 'Found Through Other',
+						name = 'Found Posting Through Other',
 						color = 'oceanblue'
 					),
 					
 					list(
 						id = 'scGoogle',
 						column = 0,
-						name = 'Found Through Google',
+						name = 'Found Posting Through Google',
 						color = 'Blue'
 					),
 					
 					list(
 						id = 'scIndeed',
 						column = 0,
-						name = 'Found Through Indeed',
+						name = 'Found Posting Through Indeed',
 						color = 'Skyblue'
 					),
 					list(
 						id = 'scCompany Site',
 						column = 0,
-						name = 'Found Through Company Site',
+						name = 'Found Posting Through Company Site',
 						color = 'gold'
 					),
 					list(
@@ -178,7 +189,7 @@ server = function(input, output) {
 					list(
 						id = 'irW',
 						column = 2,
-						name = 'Withdrawn By Me',
+						name = 'Withdrew Application',
 						color = 'purple'
 					),
 					list(
@@ -202,7 +213,7 @@ server = function(input, output) {
 					list(
 						id = 'i1W',
 						column = 3,
-						name = 'Withdrawn By Me',
+						name = 'Withdrew Application',
 						color = 'purple'
 					),
 					list(
@@ -233,7 +244,7 @@ server = function(input, output) {
 					list(
 						id = 'i2W',
 						column = 4,
-						name = 'Withdrawn By Me',
+						name = 'Withdrew Application',
 						color = 'purple'
 					),
 					list(
@@ -263,7 +274,7 @@ server = function(input, output) {
 					list(
 						id = 'i3W',
 						column = 5,
-						name = 'Withdrawn By Me',
+						name = 'Withdrew Application',
 						color = 'purple'
 					),
 					list(
@@ -271,6 +282,12 @@ server = function(input, output) {
 						column = 5,
 						name = 'Ghost',
 						color = 'Maroon'
+					),
+					list(
+						id = 'i3O',
+						column = 5,
+						name = 'Job Offer',
+						color = 'lawngreen'
 					),
 					list(
 						id = 'i4N',
@@ -281,8 +298,8 @@ server = function(input, output) {
 					list(
 						id = 'i4A',
 						column = 6,
-						name = 'Third Round',
-						color = 'forestgreen'
+						name = 'Fourth Round',
+						color = 'olivedrab'
 					),
 					list(
 						id = 'i4D',
@@ -293,7 +310,7 @@ server = function(input, output) {
 					list(
 						id = 'i4W',
 						column = 6,
-						name = 'Withdrawn By Me',
+						name = 'Withdrew Application',
 						color = 'purple'
 					),
 					list(
@@ -301,7 +318,50 @@ server = function(input, output) {
 						column = 6,
 						name = 'Ghost',
 						color = 'Maroon'
+					),
+					list(
+						id = 'i4O',
+						column = 6,
+						name = 'Job Offer',
+						color = 'lawngreen'
+					),
+					list(
+						id = 'i5N',
+						column = 7,
+						name = 'Awaiting/No Response',
+						color = 'black'
+					),
+					list(
+						id = 'i5A',
+						column = 7,
+						name = 'Third Round',
+						color = 'green'
+					),
+					list(
+						id = 'i5D',
+						column = 7,
+						name = 'Rejection',
+						color = 'red'
+					),
+					list(
+						id = 'i5W',
+						column = 7,
+						name = 'Withdrew Application',
+						color = 'purple'
+					),
+					list(
+						id = 'i5G',
+						column = 7,
+						name = 'Ghost',
+						color = 'Maroon'
+					),
+					list(
+						id = 'i5O',
+						column = 7,
+						name = 'Job Offer',
+						color = 'lawngreen'
 					)
+					
 					
 				)
 			
@@ -355,6 +415,15 @@ server = function(input, output) {
 				dplyr::summarize(., n = n(), .groups = 'drop') %>%
 				dplyr::rename(., from = Interview3, to = Interview4, weight = n)
 			
+			chartDfs[[7]] =
+				dataDf %>%
+				dplyr::mutate(., Interview5 = ifelse(Interview4 != 'i4A', paste0('i5', str_sub(Interview4, 3)), Interview5)) %>%
+				dplyr::select(., Interview4, Interview5) %>%
+				dplyr::group_by(., Interview4, Interview5) %>%
+				dplyr::summarize(., n = n(), .groups = 'drop') %>%
+				dplyr::rename(., from = Interview4, to = Interview5, weight = n)
+			
+			
 			chartDf = chartDfs %>% dplyr::bind_rows(.)
 
 
@@ -382,12 +451,18 @@ server = function(input, output) {
 					)
 				) %>%
 				hc_size(height = 600) %>%
+				# hc_chart(inverted = TRUE) %>%
 				# hc_xAxis(categories = chartDf$name) %>%
 				# hc_yAxis(title = list(text = textStr)) %>%
 				# hc_size(height = 300) %>%
 				# hc_legend(enabled = FALSE) %>%
 				hc_title(text = 'Charles Job Applications 2/22 - Current') %>%
-				hc_add_theme(hc_theme_538())
+				hc_add_theme(hc_theme_538()) %>%
+				hc_exporting(
+					enabled = TRUE, # always enabled
+					filename = "custom-file-name"
+				)
+			
 		})
 
 	
