@@ -223,10 +223,6 @@ server = function(input, output, session) {
 				)
 			
 			else NULL
-			# else if (subFreq == 'h')
-			# 	order = 4:24,
-			# 	time_label = as.character(4:24),
-			# 	start = 
 		}
 		
 		updateActionButton(
@@ -261,6 +257,43 @@ server = function(input, output, session) {
 			else if (state$freq == 'w') lubridate::ceiling_date(., 'week', week_start = 1)
 			else if (state$freq == 'm') lubridate::ceiling_date(., 'month')
 		}
+		
+		# Also update subfreqDf - same code as previous
+		state$subFreqDf = {
+			if (state$subFreq == 'md')
+				tibble(
+					order = 1:length(seq(state$dateMin, state$dateMax, by = '1 day')),
+					time_label = seq(state$dateMin, state$dateMax, by = '1 day') %>% format(., '%m/%d'),
+					start = seq(state$dateMin, state$dateMax, by = '1 day'),
+					end = seq(state$dateMin, state$dateMax, by = '1 day') + days(1) - seconds(1)
+				)
+			
+			else if (state$subFreq == 'd')
+				tibble(
+					order = 1:7,
+					time_label = c('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'),
+					start = seq(state$dateMin, state$dateMax - lubridate::days(1), by = '1 day'),
+					end = seq(state$dateMin, state$dateMax - lubridate::days(1), by = '1 day') + days(1) - seconds(1)
+				)
+			
+			else if (state$subFreq == 'h')
+				tibble(
+					order = 1:24,
+					time_label = seq(state$dateMin, state$dateMax, by = '1 hour') %>% head(., -1) %>% {paste0(as.numeric(format(., '%I')), str_to_lower(str_sub(format(., '%p'), 1, 1)))},
+					start = seq(state$dateMin, state$dateMax, by = '1 hour') %>% head(., -1),
+					end = (seq(state$dateMin, state$dateMax, by = '1 hour') + hours(1) - seconds(1))%>% head(., -1)
+				)
+			else if (state$subFreq == 'm')
+				tibble(
+					order = 1:60,
+					time_label = seq(state$dateMin, state$dateMax, by = '1 min') %>% format(., '%I:%M'),
+					start = seq(state$dateMin, state$dateMax, by = '1 min'),
+					end = seq(state$dateMin, state$dateMax, by = '1 min') + minutes(1) - seconds(1)
+				)
+			
+			else NULL
+		}
+		
 	}, ignoreInit = TRUE)
 	
 	
@@ -291,7 +324,7 @@ server = function(input, output, session) {
 					{
 						if (state$freq == 'h') paste0(format(state$dateMin, '%I:%M%p'), ' - ', format(state$dateMax, '%I:%M%p'))
 						else if (state$freq == 'd') format(state$dateMin, '%A %B %d')
-						else if (state$freq == 'w') paste0(format(state$dateMin, '%A %b %d'), ' - ', format(state$dateMax - lubridate::days(0), '%A %b %d'))
+						else if (state$freq == 'w') paste0(format(state$dateMin, '%A %b %d'), ' - ', format(state$dateMax - lubridate::days(1), '%A %b %d'))
 						else if (state$freq == 'm') paste0(format(state$dateMin, '%m/%d/%Y'))
 					},
 					' (', toupper(state$freq), ')'
