@@ -30,6 +30,7 @@ ui = tagList(
 				text-align: left;
 			}
 		")),
+		tags$title('AW UI'),
 		tags$script(src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/js/bootstrap.bundle.min.js'),
 		tags$link(rel='stylesheet', href = 'https://econforecasting.com/static/style-bs.css')
 		
@@ -339,7 +340,7 @@ server = function(input, output, session) {
 		rawDf =
 			dbGetQuery(conn, 'SELECT * FROM eventmodel WHERE duration >= 1 ORDER BY timestamp ASC') %>%
 			as_tibble(.) %>%
-			dplyr::mutate(., afk = ifelse(bucket_id == 1, ifelse(datastr == '{\"status\": \"afk\"}', TRUE, FALSE), NA)) %>%
+			dplyr::mutate(., afk = ifelse(bucket_id == 3, ifelse(datastr == '{\"status\": \"afk\"}', TRUE, FALSE), NA)) %>%
 			tidyr::fill(., afk) 
 		return(rawDf)
 	})
@@ -366,20 +367,12 @@ server = function(input, output, session) {
 		
 		taskTimeDf0 =
 			filteredDf %>%
-			dplyr::filter(., (bucket_id == 1 & afk == TRUE) | bucket_id != 1 & duration != 0) %>%
+			dplyr::filter(., (bucket_id == 3 & afk == TRUE) | bucket_id != 3 & duration != 0) %>%
 			rowwise(.) %>%
 			dplyr::mutate(., datastr = map(datastr, function(x) as_tibble(jsonlite::fromJSON(x)))) %>%
 			tidyr::unnest(., datastr) %>%
-			dplyr::transmute(
-				.,
-				timestamp,
-				duration,
-				app,
-				title = ifelse(is.na(title) & afk == TRUE, 'went-afk', title),
-				url = getDomains(url),
-				afk
-			) %>%
-			# Replace entries that are x.domain.com with domain.com if in topLevelDomains
+
+			 			# Replace entries that are x.domain.com with domain.com if in topLevelDomains
 			dplyr::mutate(
 				.,
 				url2 = ifelse(str_count(url, coll('.')) == 2, str_sub(str_replace(url, '[^.]+', ''), 2), url),

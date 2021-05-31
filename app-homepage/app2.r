@@ -8,8 +8,6 @@ library(highcharter)
 library(DT)
 library(lubridate)
 
-
-
 catDf =
 	readxl::read_xlsx(XLSX_DIR, sheet = 'category', na = c('', 'NA')) %>%
 	rowwise(.) %>%
