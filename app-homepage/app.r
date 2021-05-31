@@ -152,7 +152,8 @@ server = function(input, output, session) {
 		taskDf %>%
 		dplyr::filter(., str_sub(task, 1, 1) == '*') %>%
 		dplyr::mutate(., x = str_replace(task, coll('*.'), '')) %>%
-		{c(., .$x)}
+		.$x
+		#{c(., .$x)}
 	
 	
 	# Debug
@@ -375,6 +376,7 @@ server = function(input, output, session) {
 			 			# Replace entries that are x.domain.com with domain.com if in topLevelDomains
 			dplyr::mutate(
 				.,
+				url = getDomains(url),
 				url2 = ifelse(str_count(url, coll('.')) == 2, str_sub(str_replace(url, '[^.]+', ''), 2), url),
 				url = ifelse(url2 %in% topLevelDomains, url2, url)
 			) %>%
