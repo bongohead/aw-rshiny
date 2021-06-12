@@ -1,1 +1,1 @@
-"C:\Program Files\R\R-4.0.4\bin\Rscript.exe" "D:\OneDrive\__Projects\aw-rshiny\call.r"
+"C:\Program Files\R\R-4.1.0\bin\x64\Rscript.exe" "D:\OneDrive\__Projects\aw-rshiny\call.r"

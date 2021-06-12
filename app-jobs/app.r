@@ -104,7 +104,17 @@ server = function(input, output) {
 							   	   )
 							   )
 						),
-					Interview5 = paste0('i5', Interview5)
+					Interview5 = paste0('i5', Interview5),
+					Interview6 = 
+						ifelse(is.na(Interview5) & is.na(Interview6), 'N',
+							   ifelse(is.na(Interview6) & Interview5 != 'i5A', str_sub(Interview5, 3),
+							   	   ifelse(is.na(Interview6) & Interview5 == 'i5A', 'N',
+							   	   	   Interview6
+							   	   )
+							   )
+						),
+					Interview6 = paste0('i6', Interview6)
+					
 					
 					
 				)
@@ -175,12 +185,6 @@ server = function(input, output) {
 						color = 'lightgreen'
 					),
 					list(
-						id = 'irD',
-						column = 2,
-						name = 'Rejection',
-						color = 'red'
-					),
-					list(
 						id = 'irN',
 						column = 2,
 						name = 'No Response',
@@ -193,10 +197,10 @@ server = function(input, output) {
 						color = 'purple'
 					),
 					list(
-						id = 'i1N',
-						column = 3,
-						name = 'No Response',
-						color = 'black'
+						id = 'irD',
+						column = 2,
+						name = 'Rejection',
+						color = 'red'
 					),
 					list(
 						id = 'i1A',
@@ -205,22 +209,42 @@ server = function(input, output) {
 						color = 'MediumSpringGreen'
 					),
 					list(
-						id = 'i1D',
-						column = 3,
-						name = 'Rejection',
-						color = 'red'
-					),
-					list(
 						id = 'i1W',
 						column = 3,
 						name = 'Withdrew Application',
 						color = 'purple'
+					),
+					
+					list(
+						id = 'i1N',
+						column = 3,
+						name = 'No Response',
+						color = 'black'
 					),
 					list(
 						id = 'i1G',
 						column = 3,
 						name = 'Ghost',
 						color = 'Maroon'
+					),
+					list(
+						id = 'i1D',
+						column = 3,
+						name = 'Rejection',
+						color = 'red'
+					),
+
+					list(
+						id = 'i2A',
+						column = 4,
+						name = 'Second Round',
+						color = 'forestgreen'
+					),
+					list(
+						id = 'i2W',
+						column = 4,
+						name = 'Withdrew Application',
+						color = 'purple'
 					),
 					
 					list(
@@ -230,10 +254,10 @@ server = function(input, output) {
 						color = 'black'
 					),
 					list(
-						id = 'i2A',
+						id = 'i2G',
 						column = 4,
-						name = 'Second Round',
-						color = 'forestgreen'
+						name = 'Ghost',
+						color = 'Maroon'
 					),
 					list(
 						id = 'i2D',
@@ -242,22 +266,10 @@ server = function(input, output) {
 						color = 'red'
 					),
 					list(
-						id = 'i2W',
-						column = 4,
-						name = 'Withdrew Application',
-						color = 'purple'
-					),
-					list(
-						id = 'i2G',
-						column = 4,
-						name = 'Ghost',
-						color = 'Maroon'
-					),
-					list(
-						id = 'i3N',
+						id = 'i3O',
 						column = 5,
-						name = 'Awaiting/No Response',
-						color = 'black'
+						name = 'Job Offer',
+						color = 'green'
 					),
 					list(
 						id = 'i3A',
@@ -266,16 +278,17 @@ server = function(input, output) {
 						color = 'forestgreen'
 					),
 					list(
-						id = 'i3D',
-						column = 5,
-						name = 'Rejection',
-						color = 'red'
-					),
-					list(
 						id = 'i3W',
 						column = 5,
 						name = 'Withdrew Application',
 						color = 'purple'
+					),
+					
+					list(
+						id = 'i3N',
+						column = 5,
+						name = 'Awaiting/No Response',
+						color = 'black'
 					),
 					list(
 						id = 'i3G',
@@ -284,17 +297,18 @@ server = function(input, output) {
 						color = 'Maroon'
 					),
 					list(
-						id = 'i3O',
+						id = 'i3D',
 						column = 5,
-						name = 'Job Offer',
-						color = 'lawngreen'
+						name = 'Rejection',
+						color = 'red'
 					),
 					list(
-						id = 'i4N',
+						id = 'i4O',
 						column = 6,
-						name = 'Awaiting/No Response',
-						color = 'black'
+						name = 'Job Offer',
+						color = 'green'
 					),
+					
 					list(
 						id = 'i4A',
 						column = 6,
@@ -302,16 +316,17 @@ server = function(input, output) {
 						color = 'olivedrab'
 					),
 					list(
-						id = 'i4D',
-						column = 6,
-						name = 'Rejection',
-						color = 'red'
-					),
-					list(
 						id = 'i4W',
 						column = 6,
 						name = 'Withdrew Application',
 						color = 'purple'
+					),
+					
+					list(
+						id = 'i4N',
+						column = 6,
+						name = 'Awaiting/No Response',
+						color = 'black'
 					),
 					list(
 						id = 'i4G',
@@ -319,29 +334,30 @@ server = function(input, output) {
 						name = 'Ghost',
 						color = 'Maroon'
 					),
+					
 					list(
-						id = 'i4O',
+						id = 'i4D',
 						column = 6,
-						name = 'Job Offer',
-						color = 'lawngreen'
+						name = 'Rejection',
+						color = 'red'
 					),
 					list(
-						id = 'i5N',
+						id = 'i5X',
 						column = 7,
-						name = 'Awaiting/No Response',
-						color = 'black'
+						name = 'Accepted Offer',
+						color = 'green'
+					),
+					list(
+						id = 'i5O',
+						column = 7,
+						name = 'Job Offer',
+						color = 'green'
 					),
 					list(
 						id = 'i5A',
 						column = 7,
-						name = 'Third Round',
+						name = 'Fifth Round',
 						color = 'green'
-					),
-					list(
-						id = 'i5D',
-						column = 7,
-						name = 'Rejection',
-						color = 'red'
 					),
 					list(
 						id = 'i5W',
@@ -350,16 +366,66 @@ server = function(input, output) {
 						color = 'purple'
 					),
 					list(
+						id = 'i5N',
+						column = 7,
+						name = 'Awaiting/No Response',
+						color = 'black'
+					),
+					list(
 						id = 'i5G',
 						column = 7,
 						name = 'Ghost',
 						color = 'Maroon'
 					),
+					
 					list(
-						id = 'i5O',
+						id = 'i5D',
 						column = 7,
+						name = 'Rejection',
+						color = 'red'
+					),
+					list(
+						id = 'i6X',
+						column = 8,
+						name = 'Accepted Offer',
+						color = 'green'
+					),
+					list(
+						id = 'i6O',
+						column = 8,
 						name = 'Job Offer',
-						color = 'lawngreen'
+						color = 'green'
+					),
+					list(
+						id = 'i6A',
+						column = 8,
+						name = 'Fifth Round',
+						color = 'green'
+					),
+					list(
+						id = 'i6W',
+						column = 8,
+						name = 'Withdrew Application',
+						color = 'purple'
+					),
+					list(
+						id = 'i6N',
+						column = 8,
+						name = 'Awaiting/No Response',
+						color = 'black'
+					),
+					list(
+						id = 'i6G',
+						column = 8,
+						name = 'Ghost',
+						color = 'Maroon'
+					),
+					
+					list(
+						id = 'i6D',
+						column = 8,
+						name = 'Rejection',
+						color = 'red'
 					)
 					
 					
@@ -422,6 +488,14 @@ server = function(input, output) {
 				dplyr::group_by(., Interview4, Interview5) %>%
 				dplyr::summarize(., n = n(), .groups = 'drop') %>%
 				dplyr::rename(., from = Interview4, to = Interview5, weight = n)
+			
+			chartDfs[[8]] =
+				dataDf %>%
+				dplyr::mutate(., Interview6 = ifelse(Interview5 != 'i5A', paste0('i6', str_sub(Interview5, 3)), Interview6)) %>%
+				dplyr::select(., Interview5, Interview6) %>%
+				dplyr::group_by(., Interview5, Interview6) %>%
+				dplyr::summarize(., n = n(), .groups = 'drop') %>%
+				dplyr::rename(., from = Interview5, to = Interview6, weight = n)
 			
 			
 			chartDf = chartDfs %>% dplyr::bind_rows(.)
