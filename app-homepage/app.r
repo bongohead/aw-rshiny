@@ -111,13 +111,16 @@ ui = tagList(
 				
 				div(
 					class = 'row my-4',
-					div(class = 'col-md-12 col-lg-8 col-xxl-9', highchartOutput('catPlot', height = 300)),
-					div(class = 'col-md-12 col-lg-4 col-xxl-3', style = 'font-size: .75rem', dataTableOutput('catTable')),
+					div(class = 'col-md-12 col-lg-7 col-xxl-8', highchartOutput('catPlot', height = 300)),
+					div(class = 'col-md-12 col-lg-5 col-xxl-4', style = 'font-size: .85rem', dataTableOutput('catTable')),
 				),
 				div(
 					class = 'row justify-content-center',
-					highchartOutput(outputId = "taskPlot"),
-					div(class = 'col-auto', dataTableOutput('taskTable'))
+					div(class = 'col-md-12 col-lg-5', dataTableOutput('taskTable')),
+					div(class = 'col-md-12 col-lg-7', highchartOutput(outputId = "taskPlot")),
+
+					# highchartOutput(outputId = "taskPlot"),
+					# div(class = 'col-auto', dataTableOutput('taskTable'))
 				)
 			)
 		),
@@ -619,7 +622,7 @@ server = function(input, output, session) {
 			
 			chartDf =
 				taskTimeDf %>%
-				head(., 20) %>%
+				head(., 10) %>%
 				dplyr::left_join(., catDf, by = 'category') %>%
 				dplyr::mutate(., time = {if (max(.$minutes) >= 120) hours else minutes})
 
@@ -630,7 +633,7 @@ server = function(input, output, session) {
 				hc_xAxis(categories = chartDf$task) %>%
 				hc_yAxis(title = list(text = textStr)) %>%
 				hc_legend(enabled = FALSE) %>%
-				hc_title(text = 'Tasks') %>%
+				hc_title(text = 'Top 10 Tasks') %>%
 				hc_add_theme(hc_theme_bloom())
 			})
 
@@ -671,7 +674,7 @@ server = function(input, output, session) {
 									color =
 										grDevices::col2rgb(color)[, 1] %>%
 										paste0(., collapse = ',') %>%
-										paste0('rgba(', ., ',.2)')
+										paste0('rgba(', ., ',.5)')
 									) %>%
 								.$color
 						)
