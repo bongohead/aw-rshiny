@@ -32,11 +32,20 @@ ui = tagList(
 				font-size: .95rem;
 				text-align: left;
 			}
+			
+			#catTable table td {
+				padding: .3rem .6rem;
+			}
+			
+			body {
+				background-color: #edf2f9;
+			}
+			
 		")),
 		tags$title('AW UI'),
 		tags$link(rel = 'shortcut icon', href = 'https://test.macrodawg.com/dogwake.png'),
 		tags$script(src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js'),
-		tags$link(rel='stylesheet', href = 'https://econforecasting.com/static/style-bs.css')
+		tags$link(rel='stylesheet', href = 'https://econforecasting.com/static/style-bs.css'),
 	),
 	
 	div(
@@ -57,7 +66,7 @@ ui = tagList(
 						selectInput(
 							'freq',
 							label = NULL,
-							choices = list('Hour' = 'h', 'Day' = 'd', "Week" = 'w', 'Month' = 'm', 'Year' = 'y'), selected = 'm'
+							choices = list('Hour' = 'h', 'Day' = 'd', "Week" = 'w', 'Month' = 'm', 'Year' = 'y'), selected = 'w'
 						)
 					)
 
@@ -90,24 +99,20 @@ ui = tagList(
 		# 		div(class = 'col-sm-12 col-md-12 col-lg-12 col-xl-12', highchartOutput('tsPlot', height = 150)),
 		# 	)
 		# ),
-		
+
 		div(
-			class = 'container-fluid',
-			style = 'height:2rem;background-image:linear-gradient(45deg, var(--bs-econgreen) 50%, var(--bs-econpale) 50%)',
-			div(
-				class = 'container',
-				h4('Data', style = 'color:white')
-			)
-		),
-		div(
-			class = 'container-fluid py-4',
+			class = 'container-fluid mt-4',
 			style = 'background-image: linear-gradient(165deg, rgba(235, 245, 247, .5) 50%, rgba(255, 255, 255, .3) 50%)',
+
 			div(
 				class= 'container',
+				hr(),
+				h2('Data'),
+				
 				div(
-					class = 'row',
-					div(class = 'col-md-12 col-lg-6', highchartOutput('catPlot', height = 300)),
-					div(class = 'col-md-12 col-lg-6', style = 'font-size: .75rem', dataTableOutput('catTable')),
+					class = 'row my-4',
+					div(class = 'col-md-12 col-lg-8 col-xxl-9', highchartOutput('catPlot', height = 300)),
+					div(class = 'col-md-12 col-lg-4 col-xxl-3', style = 'font-size: .75rem', dataTableOutput('catTable')),
 				),
 				div(
 					class = 'row justify-content-center',
@@ -354,6 +359,7 @@ server = function(input, output, session) {
 			as_tibble(.) %>%
 			dplyr::mutate(., afk = ifelse(bucket_id == AFK_BUCKET_ID, ifelse(datastr == '{\"status\": \"afk\"}', TRUE, FALSE), NA)) %>%
 			tidyr::fill(., afk)
+		
 		return(rawDf)
 	})
 	
@@ -402,48 +408,48 @@ server = function(input, output, session) {
 			# dplyr::mutate(., datastr = map(datastr, function(x) as_tibble(jsonlite::fromJSON(x)))) %>%
 			# tidyr::unnest(., datastr) %>%
  			# Replace entries that are x.domain.com with domain.com if in topLevelDomains
-			dplyr::mutate(
+			mutate(
 				.,
 				url = getDomains(url),
 				url2 = ifelse(str_count(url, coll('.')) == 2, str_sub(str_replace(url, '[^.]+', ''), 2), url),
 				url = ifelse(url2 %in% topLevelDomains, url2, url)
 			) %>%
-			dplyr::select(., -url2) %>%
+			select(., -url2) %>%
 			# Get rid of firefox due to overlapping with url entries and AFK entries
-			dplyr::filter(., (is.na(app) | app != 'firefox.exe')) %>%
+			filter(., (is.na(app) | app != 'firefox.exe')) %>%
 			# Now shortern the duration of any entries where the time overlaps with the second entry (this seems to be an AW bug)
-			dplyr::arrange(., timestamp) %>%
-			dplyr::mutate(., timeEnded = timestamp + seconds(duration)) %>%
-			dplyr::mutate(., duration = ifelse(timeEnded > dplyr::lead(timestamp, 1) & !is.na(dplyr::lead(timestamp, 1)), dplyr::lead(timestamp, 1) - timestamp, duration)) %>%
+			arrange(., timestamp) %>%
+			mutate(., timeEnded = timestamp + seconds(duration)) %>%
+			mutate(., duration = ifelse(timeEnded > dplyr::lead(timestamp, 1) & !is.na(dplyr::lead(timestamp, 1)), dplyr::lead(timestamp, 1) - timestamp, duration)) %>%
 			# This gets rid of remaining afk entries (some will be marked after afk has already started, these are not removed in the previous step)
-			dplyr::filter(., afk == FALSE) %>%
+			filter(., afk == FALSE) %>%
 			# Order desc
-			dplyr::arrange(., desc(timestamp)) %>%
-			dplyr::mutate(., task = ifelse(is.na(url), app, url))
+			arrange(., desc(timestamp)) %>%
+			mutate(., task = ifelse(is.na(url), app, url))
 		
 		
 		# Aggregate up to subfrequency and clean
 		subTaskTimeDf =
 			state$subFreqDf %>%
-			dplyr::group_by(., order) %>%
-			dplyr::group_split(.) %>%
+			group_by(., order) %>%
+			group_split(.) %>%
 			lapply(., function(subFreqDf)
-				dplyr::filter(taskTimeDf0, timestamp >= subFreqDf$start & timestamp <= subFreqDf$end) %>%
-					dplyr::bind_cols(., subFreqDf[, c('order', 'time_label')])
+				filter(taskTimeDf0, timestamp >= subFreqDf$start & timestamp <= subFreqDf$end) %>%
+					bind_cols(., subFreqDf[, c('order', 'time_label')])
 				) %>%
-			dplyr::bind_rows(.) %>%
-			dplyr::group_by(
+			bind_rows(.) %>%
+			group_by(
 				.,
 				task,
 				order,
 				time_label,
 				) %>%
-			dplyr::summarize(., minutes = round(sum(duration)/60), .groups = 'drop') %>%
-			dplyr::mutate(., hours = round(minutes/60, 2)) %>%
-			dplyr::left_join(., taskDf %>% dplyr::mutate(., task = str_replace(task, coll('*.'), '')), by = 'task') %>%
-			dplyr::mutate(., category = ifelse(is.na(category), 'unknown', category)) %>%
-			dplyr::arrange(., desc(minutes)) %>%
-			dplyr::filter(., task != 'LockApp.exe')
+			summarize(., minutes = round(sum(duration)/60), .groups = 'drop') %>%
+			mutate(., hours = round(minutes/60, 2)) %>%
+			left_join(., taskDf %>% mutate(., task = str_replace(task, coll('*.'), '')), by = 'task') %>%
+			mutate(., category = ifelse(is.na(category), 'unknown', category)) %>%
+			arrange(., desc(minutes)) %>%
+			filter(., task != 'LockApp.exe')
 		
 		taskTimeDf =
 			subTaskTimeDf %>%
@@ -465,7 +471,6 @@ server = function(input, output, session) {
 			dplyr::summarize(., minutes = sum(minutes), .groups = 'drop') %>% 
 			dplyr::mutate(., hours = round(minutes/60, 2)) %>%
 			dplyr::left_join(., catDf, by = 'category')
-		
 		
 		catTimeDf =
 			subCatTimeDf %>%
@@ -553,8 +558,7 @@ server = function(input, output, session) {
 				hc_xAxis(., categories = state$subFreqDf$time_label) %>%
 				hc_plotOptions(column = list(stacking = "normal")) %>%
 				hc_legend(enabled = FALSE) %>%
-				hc_add_theme(hc_theme_538())
-
+				hc_add_theme(hc_theme_bloom())
 		})
 	
 	output$catPlot =
@@ -575,7 +579,7 @@ server = function(input, output, session) {
 				hc_size(height = 300) %>%
 				hc_legend(enabled = FALSE) %>%
 				hc_title(text = 'Categories') %>%
-				hc_add_theme(hc_theme_538())
+				hc_add_theme(hc_theme_bloom())
 		})
 	
 	output$catTable =
@@ -596,6 +600,11 @@ server = function(input, output, session) {
 				colnames = c('Category' = 'name', 'Duration' = 'time'),
 				options = list(
 					pageLength = 10,
+					dom = paste0(
+						"<'row justify-content-end'<'col-auto'>>",
+						"<'row justify-content-center'<'col-12'tr>>",
+						"<'row justify-content-end'<'col-auto'>>"
+						),
 					order = list(list(1, 'desc'))
 					),
 				rownames = FALSE
@@ -622,7 +631,7 @@ server = function(input, output, session) {
 				hc_yAxis(title = list(text = textStr)) %>%
 				hc_legend(enabled = FALSE) %>%
 				hc_title(text = 'Tasks') %>%
-				hc_add_theme(hc_theme_ft())
+				hc_add_theme(hc_theme_bloom())
 			})
 
 	output$taskTable =
