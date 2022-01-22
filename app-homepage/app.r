@@ -2,13 +2,16 @@ SQLITE_DIR = 'C:/Users/Charles/AppData/Local/activitywatch/activitywatch/aw-serv
 XLSX_DIR = 'D:/OneDrive/__Projects/aw-rshiny/inputs.xlsx'
 
 library(RSQLite)
-library(tidyverse)
+library(dplyr)
+library(purrr)
+library(stringr)
 library(shiny)
 library(highcharter)
 library(DT)
 library(lubridate)
+AFK_BUCKET_ID = 1
 
- 
+
 getDomains = function(vec) {
 	PROTOCOL_REGEX <- "^(?:(?:[[:alpha:]+.-]+)://)?"
 	PREFIX_REGEX <- "(?:www\\.)?"
@@ -32,11 +35,9 @@ ui = tagList(
 		")),
 		tags$title('AW UI'),
 		tags$link(rel = 'shortcut icon', href = 'https://test.macrodawg.com/dogwake.png'),
-		tags$script(src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.min.js'),
+		tags$script(src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js'),
 		tags$link(rel='stylesheet', href = 'https://econforecasting.com/static/style-bs.css')
-		
 	),
-	
 	
 	div(
 		class = 'container-fluid p-0',
@@ -56,7 +57,7 @@ ui = tagList(
 						selectInput(
 							'freq',
 							label = NULL,
-							choices = list('Hour' = 'h', 'Day' = 'd', "Week" = 'w', 'Month' = 'm'), selected = 'w'
+							choices = list('Hour' = 'h', 'Day' = 'd', "Week" = 'w', 'Month' = 'm', 'Year' = 'y'), selected = 'm'
 						)
 					)
 
@@ -145,7 +146,6 @@ server = function(input, output, session) {
 		) %>%
 		dplyr::ungroup(.)
 	
-	
 	taskDf =
 		readxl::read_xlsx(XLSX_DIR, sheet = 'task')
 	
@@ -155,7 +155,6 @@ server = function(input, output, session) {
 		dplyr::mutate(., x = str_replace(task, coll('*.'), '')) %>%
 		.$x
 		#{c(., .$x)}
-	
 	
 	# Debug
 	# input = list(freq = 'w')
@@ -174,27 +173,30 @@ server = function(input, output, session) {
 		state$freq = input$freq
 
 		state$dateMax = {
-			if (state$freq == 'h') lubridate::as_datetime(Sys.time(), tz = Sys.timezone())
-			else if (state$freq == 'd') lubridate::ceiling_date(Sys.time() - lubridate::hours(4), 'day') + lubridate::hours(4)
-			else if (state$freq == 'w') lubridate::as_datetime(lubridate::ceiling_date(Sys.time(), 'week', week_start = 1), tz = Sys.timezone()) + lubridate::hours(4)
-			else if (state$freq == 'm') lubridate::as_datetime(lubridate::ceiling_date(Sys.time(), 'month'), tz = Sys.timezone()) + lubridate::hours(4)
+			if (state$freq == 'h') as_datetime(Sys.time(), tz = Sys.timezone())
+			else if (state$freq == 'd') ceiling_date(Sys.time() - hours(4), 'day') + hours(4)
+			else if (state$freq == 'w') as_datetime(ceiling_date(Sys.time(), 'week', week_start = 1), tz = Sys.timezone()) + hours(4)
+			else if (state$freq == 'm') as_datetime(ceiling_date(Sys.time(), 'month'), tz = Sys.timezone()) + hours(4)
+			else if (state$freq == 'y') as_datetime(ceiling_date(Sys.time(), 'year'), tz = Sys.timezone()) + hours(4)
 		}
 		state$dateMin = {
-			if (state$freq == 'h') lubridate::as_datetime(Sys.time() - lubridate::hours(1), tz = Sys.timezone())
-			else if (state$freq == 'd') lubridate::floor_date(Sys.time() - lubridate::hours(4), 'day') + lubridate::hours(4)
-			else if (state$freq == 'w') lubridate::as_datetime(lubridate::floor_date(Sys.time(), 'week', week_start = 1), tz = Sys.timezone()) + lubridate::hours(4)
-			else if (state$freq == 'm') lubridate::as_datetime(lubridate::floor_date(Sys.time(), 'month'), tz = Sys.timezone()) + lubridate::hours(4)
+			if (state$freq == 'h') as_datetime(Sys.time() - hours(1), tz = Sys.timezone())
+			else if (state$freq == 'd') floor_date(Sys.time() - hours(4), 'day') + hours(4)
+			else if (state$freq == 'w') as_datetime(floor_date(Sys.time(), 'week', week_start = 1), tz = Sys.timezone()) + hours(4)
+			else if (state$freq == 'm') as_datetime(floor_date(Sys.time(), 'month'), tz = Sys.timezone()) + hours(4)
+			else if (state$freq == 'y') as_datetime(floor_date(Sys.time(), 'year'), tz = Sys.timezone()) + hours(4)
 		}
 		
 		state$subFreq = {
-			if (state$freq == 'm') 'md'
+			if (state$freq == 'y') 'yd'
+			else if (state$freq == 'm') 'md'
 			else if (state$freq == 'w') 'd'
 			else if (state$freq == 'd') 'h'
 			else if (state$freq == 'h') 'm'
 		}
 		
 		state$subFreqDf = {
-			if (state$subFreq == 'md')
+			if (state$subFreq%in% c('md', 'yd'))
 				tibble(
 					order = 1:length(seq(state$dateMin, state$dateMax, by = '1 day')),
 					time_label = seq(state$dateMin, state$dateMax, by = '1 day') %>% format(., '%m/%d'),
@@ -215,7 +217,7 @@ server = function(input, output, session) {
 					order = 1:24,
 					time_label = seq(state$dateMin, state$dateMax, by = '1 hour') %>% head(., -1) %>% {paste0(as.numeric(format(., '%I')), str_to_lower(str_sub(format(., '%p'), 1, 1)))},
 					start = seq(state$dateMin, state$dateMax, by = '1 hour') %>% head(., -1),
-					end = (seq(state$dateMin, state$dateMax, by = '1 hour') + hours(1) - seconds(1))%>% head(., -1)
+					end = (seq(state$dateMin, state$dateMax, by = '1 hour') + hours(1) - seconds(1)) %>% head(., -1)
 				)
 			else if (state$subFreq == 'm')
 				tibble(
@@ -248,22 +250,23 @@ server = function(input, output, session) {
 	
 	observeEvent(input$prev, {
 		state$dateMin = state$dateMin %>% {
-			if (state$freq == 'h') . - lubridate::hours(1)
-			else if (state$freq == 'd') . - lubridate::days(1)
-			else if (state$freq == 'w') . - lubridate::days(7)
-			else if (state$freq == 'm') lubridate::add_with_rollback(., lubridate::months(- 1), roll_to_first = TRUE)
+			if (state$freq == 'h') . - hours(1)
+			else if (state$freq == 'd') . - days(1)
+			else if (state$freq == 'w') . - days(7)
+			else if (state$freq == 'm') add_with_rollback(., months(-1), roll_to_first = TRUE)
+			else if (state$freq == 'y') add_with_rollback(., years(-1), roll_to_first = TRUE)
 		}
-		
 		state$dateMax = state$dateMin %>% {
-			if (state$freq == 'h') . + lubridate::hours(1)
-			else if (state$freq == 'd') . + lubridate::hours(24)
-			else if (state$freq == 'w') lubridate::ceiling_date(., 'week', week_start = 1)
-			else if (state$freq == 'm') lubridate::ceiling_date(., 'month')
+			if (state$freq == 'h') . + hours(1)
+			else if (state$freq == 'd') . + hours(24)
+			else if (state$freq == 'w') ceiling_date(., 'week', week_start = 1)
+			else if (state$freq == 'm') ceiling_date(., 'month')
+			else if (state$freq == 'y') ceiling_date(., 'year')
 		}
 		
 		# Also update subfreqDf - same code as previous
 		state$subFreqDf = {
-			if (state$subFreq == 'md')
+			if (state$subFreq %in% c('md', 'yd'))
 				tibble(
 					order = 1:length(seq(state$dateMin, state$dateMax, by = '1 day')),
 					time_label = seq(state$dateMin, state$dateMax, by = '1 day') %>% format(., '%m/%d'),
@@ -275,8 +278,8 @@ server = function(input, output, session) {
 				tibble(
 					order = 1:7,
 					time_label = c('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'),
-					start = seq(state$dateMin, state$dateMax - lubridate::days(1), by = '1 day'),
-					end = seq(state$dateMin, state$dateMax - lubridate::days(1), by = '1 day') + days(1) - seconds(1)
+					start = seq(state$dateMin, state$dateMax - days(1), by = '1 day'),
+					end = seq(state$dateMin, state$dateMax - days(1), by = '1 day') + days(1) - seconds(1)
 				)
 			
 			else if (state$subFreq == 'h')
@@ -302,17 +305,18 @@ server = function(input, output, session) {
 	
 	observeEvent(input$fwd, {
 		state$dateMin = state$dateMin %>% {
-			if (state$freq == 'h') . + lubridate::hours(1)
-			else if (state$freq == 'd') . + lubridate::days(1)
-			else if (state$freq == 'w') . + lubridate::days(7)
-			else if (state$freq == 'm') lubridate::add_with_rollback(., lubridate::months(- 1), roll_to_first = TRUE)
+			if (state$freq == 'h') . + hours(1)
+			else if (state$freq == 'd') . + days(1)
+			else if (state$freq == 'w') . + days(7)
+			else if (state$freq == 'm') add_with_rollback(., months(1), roll_to_first = TRUE)
+			else if (state$freq == 'y') add_with_rollback(., years(1), roll_to_first = TRUE)
 		}
-		
 		state$dateMax = state$dateMin %>% {
-			if (state$freq == 'h') . + lubridate::hours(1)
-			else if (state$freq == 'd') . + lubridate::hours(24)
-			else if (state$freq == 'w') lubridate::ceiling_date(., 'week', week_start = 1)
-			else if (state$freq == 'm') lubridate::ceiling_date(., 'month')
+			if (state$freq == 'h') . + hours(1)
+			else if (state$freq == 'd') . + hours(24)
+			else if (state$freq == 'w') ceiling_date(., 'week', week_start = 1)
+			else if (state$freq == 'm') ceiling_date(., 'month')
+			else if (state$freq == 'y') ceiling_date(., 'year')
 		}
 	}, ignoreInit = TRUE)
 	
@@ -328,7 +332,7 @@ server = function(input, output, session) {
 						if (state$freq == 'h') paste0(format(state$dateMin, '%I:%M%p'), ' - ', format(state$dateMax, '%I:%M%p'))
 						else if (state$freq == 'd') format(state$dateMin, '%A %B %d')
 						else if (state$freq == 'w') paste0(format(state$dateMin, '%A %b %d'), ' - ', format(state$dateMax - lubridate::days(1), '%A %b %d'))
-						else if (state$freq == 'm') paste0(format(state$dateMin, '%m/%d/%Y'))
+						else if (state$freq %in% c('m', 'y')) paste0(format(state$dateMin, '%m/%d/%Y'))
 					},
 					' (', toupper(state$freq), ')'
 				)
@@ -342,7 +346,7 @@ server = function(input, output, session) {
 		rawDf =
 			dbGetQuery(conn, 'SELECT * FROM eventmodel WHERE duration >= 1 ORDER BY timestamp ASC') %>%
 			as_tibble(.) %>%
-			dplyr::mutate(., afk = ifelse(bucket_id == 3, ifelse(datastr == '{\"status\": \"afk\"}', TRUE, FALSE), NA)) %>%
+			dplyr::mutate(., afk = ifelse(bucket_id == AFK_BUCKET_ID, ifelse(datastr == '{\"status\": \"afk\"}', TRUE, FALSE), NA)) %>%
 			tidyr::fill(., afk) 
 		return(rawDf)
 	})
@@ -369,7 +373,7 @@ server = function(input, output, session) {
 		
 		taskTimeDf0 =
 			filteredDf %>%
-			dplyr::filter(., (bucket_id == 3 & afk == TRUE) | bucket_id != 3 & duration != 0) %>%
+			dplyr::filter(., (bucket_id == AFK_BUCKET_ID & afk == TRUE) | bucket_id != AFK_BUCKET_ID & duration != 0) %>%
 			rowwise(.) %>%
 			dplyr::mutate(., datastr = map(datastr, function(x) as_tibble(jsonlite::fromJSON(x)))) %>%
 			tidyr::unnest(., datastr) %>%
@@ -386,7 +390,7 @@ server = function(input, output, session) {
 			dplyr::filter(., (is.na(app) | app != 'firefox.exe')) %>%
 			# Now shortern the duration of any entries where the time overlaps with the second entry (this seems to be an AW bug)
 			dplyr::arrange(., timestamp) %>%
-			dplyr::mutate(., timeEnded = timestamp + lubridate::seconds(duration)) %>%
+			dplyr::mutate(., timeEnded = timestamp + seconds(duration)) %>%
 			dplyr::mutate(., duration = ifelse(timeEnded > dplyr::lead(timestamp, 1) & !is.na(dplyr::lead(timestamp, 1)), dplyr::lead(timestamp, 1) - timestamp, duration)) %>%
 			# This gets rid of remaining afk entries (some will be marked after afk has already started, these are not removed in the previous step)
 			dplyr::filter(., afk == FALSE) %>%
@@ -548,7 +552,7 @@ server = function(input, output, session) {
 				hc_size(height = 300) %>%
 				hc_legend(enabled = FALSE) %>%
 				hc_title(text = 'Categories') %>%
-				hc_add_theme(hc_theme_ft())
+				hc_add_theme(hc_theme_538())
 		})
 	
 	output$catTable =
