@@ -165,7 +165,16 @@ server = function(input, output, session) {
 		subFreq = NULL,
 		subFreqDf = NULL
 		)
-	
+	# Uncomment below for debug
+	# input = list(
+	# 	freq = 'm'
+	# 	)
+	# state = list(
+	# 	freq = NULL,
+	# 	dateMax = NULL,
+	# 	subFreq = NULL,
+	# 	subFreqDf = NULL
+	# )
 	
 	
 	observeEvent(input$freq, {
@@ -186,7 +195,6 @@ server = function(input, output, session) {
 			else if (state$freq == 'm') as_datetime(floor_date(Sys.time(), 'month'), tz = Sys.timezone()) + hours(4)
 			else if (state$freq == 'y') as_datetime(floor_date(Sys.time(), 'year'), tz = Sys.timezone()) + hours(4)
 		}
-		
 		state$subFreq = {
 			if (state$freq == 'y') 'yd'
 			else if (state$freq == 'm') 'md'
@@ -203,7 +211,6 @@ server = function(input, output, session) {
 					start = seq(state$dateMin, state$dateMax, by = '1 day'),
 					end = seq(state$dateMin, state$dateMax, by = '1 day') + days(1) - seconds(1)
 				)
-			
 			else if (state$subFreq == 'd')
 				tibble(
 					order = 1:7,
@@ -239,7 +246,8 @@ server = function(input, output, session) {
 						if (state$freq == 'h') paste0(format(state$dateMin, '%I:%M%p'), ' - ', format(state$dateMax, '%I:%M%p'))
 						else if (state$freq == 'd') format(state$dateMin, '%A %B %d')
 						else if (state$freq == 'w') paste0(format(state$dateMin, '%A %b %d'), ' - ', format(state$dateMax - lubridate::days(1), '%A %b %d'))
-						else if (state$freq == 'm') paste0(format(state$dateMin, '%m/%d/%Y'))
+						else if (state$freq == 'm') paste0(format(state$dateMin, '%B %Y'))
+						else if (state$freq == 'y') paste0(format(state$dateMin, '%Y'))
 					},
 					' (', toupper(state$freq), ')'
 				)
@@ -273,7 +281,6 @@ server = function(input, output, session) {
 					start = seq(state$dateMin, state$dateMax, by = '1 day'),
 					end = seq(state$dateMin, state$dateMax, by = '1 day') + days(1) - seconds(1)
 				)
-			
 			else if (state$subFreq == 'd')
 				tibble(
 					order = 1:7,
@@ -281,7 +288,6 @@ server = function(input, output, session) {
 					start = seq(state$dateMin, state$dateMax - days(1), by = '1 day'),
 					end = seq(state$dateMin, state$dateMax - days(1), by = '1 day') + days(1) - seconds(1)
 				)
-			
 			else if (state$subFreq == 'h')
 				tibble(
 					order = 1:24,
@@ -331,8 +337,8 @@ server = function(input, output, session) {
 					{
 						if (state$freq == 'h') paste0(format(state$dateMin, '%I:%M%p'), ' - ', format(state$dateMax, '%I:%M%p'))
 						else if (state$freq == 'd') format(state$dateMin, '%A %B %d')
-						else if (state$freq == 'w') paste0(format(state$dateMin, '%A %b %d'), ' - ', format(state$dateMax - lubridate::days(1), '%A %b %d'))
-						else if (state$freq %in% c('m', 'y')) paste0(format(state$dateMin, '%m/%d/%Y'))
+						else if (state$freq == 'w') paste0(format(state$dateMin, '%A %b %d'), ' - ', format(state$dateMax - days(1), '%A %b %d'))
+						else if (state$freq %in% c('m', 'y')) paste0(format(state$dateMin, '%B %Y'))
 					},
 					' (', toupper(state$freq), ')'
 				)
@@ -347,7 +353,7 @@ server = function(input, output, session) {
 			dbGetQuery(conn, 'SELECT * FROM eventmodel WHERE duration >= 1 ORDER BY timestamp ASC') %>%
 			as_tibble(.) %>%
 			dplyr::mutate(., afk = ifelse(bucket_id == AFK_BUCKET_ID, ifelse(datastr == '{\"status\": \"afk\"}', TRUE, FALSE), NA)) %>%
-			tidyr::fill(., afk) 
+			tidyr::fill(., afk)
 		return(rawDf)
 	})
 	
@@ -359,7 +365,7 @@ server = function(input, output, session) {
 		filteredDf =
 			rawDf %>%
 			# Adjust to system timezone
-			dplyr::mutate(., timestamp = lubridate::with_tz(lubridate::ymd_hms(timestamp, tz = 'UTC'), Sys.timezone())) %>%
+			dplyr::mutate(., timestamp = with_tz(ymd_hms(timestamp, tz = 'UTC'), Sys.timezone())) %>%
 			dplyr::filter(., timestamp >= state$dateMin & timestamp <= state$dateMax)
 		
 		return(filteredDf)
@@ -371,14 +377,31 @@ server = function(input, output, session) {
 		
 		filteredDf = getFilteredDf()
 		
+		# Added 1/21/22 
+		# Fast CPP Parser
+		# Significantly faster than previous code
+		json_parsed_data =
+			RcppSimdJson::fparse(filteredDf$datastr, empty_array = NA, empty_object = NA, single_null = NA) %>%
+			purrr::map(., function(x)
+				list(
+					app = {if (!is.null(x$app)) x$app else NA},
+					title = {if (!is.null(x$title)) x$title else NA},
+					url = {if (!is.null(x$url)) x$url else NA}
+				)
+			) %>%
+			purrr::transpose(.) %>%
+			map(., unlist) %>%
+			as_tibble(.)
+		
 		taskTimeDf0 =
 			filteredDf %>%
+			bind_cols(., json_parsed_data) %>%
 			dplyr::filter(., (bucket_id == AFK_BUCKET_ID & afk == TRUE) | bucket_id != AFK_BUCKET_ID & duration != 0) %>%
-			rowwise(.) %>%
-			dplyr::mutate(., datastr = map(datastr, function(x) as_tibble(jsonlite::fromJSON(x)))) %>%
-			tidyr::unnest(., datastr) %>%
-
-			 			# Replace entries that are x.domain.com with domain.com if in topLevelDomains
+			# Replaced with json_parsed_data
+			# rowwise(.) %>%
+			# dplyr::mutate(., datastr = map(datastr, function(x) as_tibble(jsonlite::fromJSON(x)))) %>%
+			# tidyr::unnest(., datastr) %>%
+ 			# Replace entries that are x.domain.com with domain.com if in topLevelDomains
 			dplyr::mutate(
 				.,
 				url = getDomains(url),
