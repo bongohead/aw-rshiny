@@ -45,7 +45,7 @@ ui = tagList(
 		tags$title('AW UI'),
 		tags$link(rel = 'shortcut icon', href = 'https://test.macrodawg.com/dogwake.png'),
 		tags$script(src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js'),
-		tags$link(rel='stylesheet', href = 'https://econforecasting.com/static/style-bs.css'),
+		tags$link(rel='stylesheet', href = 'https://econforecasting.com/static/style.css'),
 	),
 	
 	div(
