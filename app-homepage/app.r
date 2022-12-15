@@ -381,6 +381,8 @@ server = function(input, output, session) {
 	
 	get_counts = reactive({
 		
+		conn = dbConnect(RSQLite::SQLite(), SQLITE_DIR)
+		
 		prev_period = get_shifted_start_end_dates(state$dateMin, state$freq, forward = F)
 		this_period = list(start_date = state$dateMin, end_date = state$dateMax)
 		next_period = get_shifted_start_end_dates(state$dateMin, state$freq, forward = T)
