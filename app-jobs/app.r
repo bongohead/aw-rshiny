@@ -18,8 +18,8 @@ ui = tagList(
 				text-align: left;
 			}
 		")),
-		tags$script(src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/js/bootstrap.bundle.min.js'),
-		tags$link(rel='stylesheet', href = 'https://econforecasting.com/static/style-bs.css')
+		tags$script(src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js'),
+		tags$link(rel='stylesheet', href = 'https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css')
 	),
 	
 	
