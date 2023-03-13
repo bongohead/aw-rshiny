@@ -1,9 +1,10 @@
-SQLITE_DIR = 'C:/Users/Charles/AppData/Local/activitywatch/activitywatch/aw-server/peewee-sqlite.v2.db'
+SQLITE_DIR = 'C:/Users/bongohead/AppData/Local/activitywatch/activitywatch/aw-server/peewee-sqlite.v2.db'
 XLSX_DIR = 'D:/OneDrive/__Projects/aw-rshiny/inputs.xlsx'
 
 # Can comment out the ones used in call.r if used in prod
 library(RSQLite)
 library(dplyr)
+library(tidyr)
 library(purrr)
 library(stringr)
 library(shiny)
@@ -169,7 +170,7 @@ get_shifted_start_end_dates = function(start_date, freq, forward = T) {
 	}
 	new_end_date = new_start_date %>% {
 		if (freq == 'd') . + hours(24)
-		else if (freq == 'w') ceiling_date(., 'week', week_start = 6) + hours(4)
+		else if (freq == 'w') ceiling_date(., 'week', week_start = 1) + hours(4)
 		else if (freq == 'm') ceiling_date(., 'month') + hours(4)
 		else if (freq == 'y') ceiling_date(., 'year') + hours(4)
 	}
@@ -189,11 +190,12 @@ get_df_split_by_subfreq = function(subfreq, start_date, end_date) {
 				end = seq(start_date, end_date, by = '1 day') + days(1) - seconds(1)
 			)
 		else if (subfreq == 'd')
+			# Floro_dates and hours(4) adjustments are to handle DST
 			tibble(
 				order = 1:7,
-				time_label = c('Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'),
-				start = seq(start_date, end_date - lubridate::days(1), by = '1 day'),
-				end = seq(start_date, end_date - lubridate::days(1), by = '1 day') + days(1) - seconds(1)
+				time_label = c('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'),
+				start = seq(floor_date(start_date, 'day'), floor_date(end_date, 'day') - days(1), by = '1 day') + hours(4),
+				end = seq(floor_date(start_date, 'day'), floor_date(end_date, 'day') - days(1), by = '1 day') + days(1) - seconds(1) + hours(4)
 			)
 		else if (subfreq == 'h')
 			tibble(
@@ -260,16 +262,16 @@ server = function(input, output, session) {
 		state$freq = input$freq
 
 		state$dateMax = {
-			if (state$freq == 'd') ceiling_date(Sys.time() - hours(4), 'day') + hours(4)
-			else if (state$freq == 'w') as_datetime(ceiling_date(Sys.time(), 'week', week_start = 6), tz = Sys.timezone()) + hours(4)
-			else if (state$freq == 'm') as_datetime(ceiling_date(Sys.time(), 'month'), tz = Sys.timezone()) + hours(4)
-			else if (state$freq == 'y') as_datetime(ceiling_date(Sys.time(), 'year'), tz = Sys.timezone()) + hours(4)
+			if (state$freq == 'd') ceiling_date(now() - hours(4), 'day') + hours(4)
+			else if (state$freq == 'w') as_datetime(ceiling_date(now() - hours(4), 'week', week_start = 1), tz = Sys.timezone()) + hours(4)
+			else if (state$freq == 'm') as_datetime(ceiling_date(now() - hours(4), 'month'), tz = Sys.timezone()) + hours(4)
+			else if (state$freq == 'y') as_datetime(ceiling_date(now() - hours(4), 'year'), tz = Sys.timezone()) + hours(4)
 		}
 		state$dateMin = {
-			if (state$freq == 'd') floor_date(Sys.time() - hours(4), 'day') + hours(4)
-			else if (state$freq == 'w') as_datetime(floor_date(Sys.time(), 'week', week_start = 6), tz = Sys.timezone()) + hours(4)
-			else if (state$freq == 'm') as_datetime(floor_date(Sys.time(), 'month'), tz = Sys.timezone()) + hours(4)
-			else if (state$freq == 'y') as_datetime(floor_date(Sys.time(), 'year'), tz = Sys.timezone()) + hours(4)
+			if (state$freq == 'd') floor_date(now() - hours(4), 'day') + hours(4)
+			else if (state$freq == 'w') as_datetime(floor_date(now() - hours(4), 'week', week_start = 1), tz = Sys.timezone()) + hours(4)
+			else if (state$freq == 'm') as_datetime(floor_date(now() - hours(4), 'month'), tz = Sys.timezone()) + hours(4)
+			else if (state$freq == 'y') as_datetime(floor_date(now() - hours(4), 'year'), tz = Sys.timezone()) + hours(4)
 		}
 		state$subFreq = {
 			if (state$freq == 'y') 'yd'
@@ -373,7 +375,7 @@ server = function(input, output, session) {
 				) %>%
 			as_tibble(.) %>%
 			mutate(., afk = ifelse(bucket_id == AFK_BUCKET_ID, ifelse(datastr == '{\"status\": \"afk\"}', T, F), NA)) %>%
-			tidyr::fill(., afk) %>%
+			fill(., afk) %>%
 			mutate(., timestamp = with_tz(timestamp, Sys.timezone())) 
 		
 		return(raw_df)
@@ -558,10 +560,11 @@ server = function(input, output, session) {
 	
 	output$tsPlot =  renderHighchart({
 		# https://stackoverflow.com/questions/46671973/highcharter-stacked-column-groupings-not-using-hchart
-		subCatTimeDf = get_cat_time_df()$subCatTimeDf
+		cat_time_df = get_cat_time_df()
+		subCatTimeDf = cat_time_df$subCatTimeDf
 		
 		series_list =
-			purrr::cross_df(list(category = catDf$category, time_label = state$subFreqDf$time_label)) %>%
+			expand_grid(category = catDf$category, time_label = state$subFreqDf$time_label) %>%
 			left_join(
 				.,
 				subCatTimeDf[, c('category', 'time_label', 'minutes', 'hours')],
